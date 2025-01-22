@@ -15,10 +15,10 @@ const calculateOrderAmount = (items: CartProductType[]) => {
   }, 0);
 
   // En yakın tam sayıya yuvarla
-  return totalPrice;
+  return Math.round(totalPrice);
 };
 
-export async function POST(request: Request) {
+export async function POST(request: Request, req: any) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {

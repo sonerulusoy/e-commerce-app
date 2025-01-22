@@ -15,8 +15,11 @@ const ManageProductsClient = dynamic(
 const ManageProducts = async () => {
   // Tüm ürünleri çek (reviews ve user bilgileri dahil)
   const productsData = await getProducts({ category: null, page: 1, pageSize: 100 });
+  console.log("productsData from getProducts:", productsData); // Bu satırı ekleyin
   const products = productsData.products;
+  const totalCount = productsData.totalCount; // totalCount değerini al
 
+  
   const currentUser = await getCurrentUser();
 
   if (!currentUser || currentUser.role !== "ADMIN") {
@@ -37,10 +40,12 @@ const ManageProducts = async () => {
     stock: product.stock,
   }));
 
+  console.log("products prop sent to ManageProductsClient:", { products: extractedProductData, totalCount: totalCount });
+
   return (
     <div className="pt-8 ">
       <Container>
-        <ManageProductsClient products={extractedProductData} />
+        <ManageProductsClient products={{ products: extractedProductData, totalCount: totalCount }} />
       </Container>
     </div>
   );

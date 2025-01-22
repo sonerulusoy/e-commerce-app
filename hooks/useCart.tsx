@@ -9,9 +9,7 @@ import {
 } from "react";
 import { toast } from "react-hot-toast";
 
-
 type CartContextType = {
-  // ... (diğer fonksiyon tanımları)
   cartTotalQty: number;
   cartTotalAmount: number;
   cartProducts: CartProductType[] | null;
@@ -22,7 +20,6 @@ type CartContextType = {
   handleClearCart: () => void;
   paymentIntent: string | null;
   handleSetPaymentIntent: (val: string | null) => void;
-  setCartItemsToLocalStorage: (cartItems: CartProductType[] | null) => void;
 };
 
 export const CartContext = createContext<CartContextType | null>(null);
@@ -31,23 +28,36 @@ interface Props {
   children: React.ReactNode;
 }
 
-// Sabitler
 const CART_ITEMS_LOCAL_STORAGE_KEY = "ECommerceCartItems";
 const PAYMENT_INTENT_LOCAL_STORAGE_KEY = "ECommercePaymentIntent";
 
 // localStorage işlemleri için yardımcı fonksiyonlar
 const getCartItemsFromLocalStorage = (): CartProductType[] | null => {
-  const cartItems = localStorage.getItem(CART_ITEMS_LOCAL_STORAGE_KEY);
-  return cartItems ? JSON.parse(cartItems) : null;
+  if (typeof window !== 'undefined') {
+    const cartItems = localStorage.getItem(CART_ITEMS_LOCAL_STORAGE_KEY);
+    return cartItems ? JSON.parse(cartItems) : null;
+  }
+  return null
 };
 
 const getPaymentIntentFromLocalStorage = (): string | null => {
-  const paymentIntent = localStorage.getItem(PAYMENT_INTENT_LOCAL_STORAGE_KEY);
-  return paymentIntent ? JSON.parse(paymentIntent) : null;
+  if (typeof window !== 'undefined') {
+    const paymentIntent = localStorage.getItem(PAYMENT_INTENT_LOCAL_STORAGE_KEY);
+    return paymentIntent ? JSON.parse(paymentIntent) : null;
+  }
+  return null;
+};
+
+const setCartItemsToLocalStorage = (cartItems: CartProductType[] | null) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(CART_ITEMS_LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
+  }
 };
 
 const setPaymentIntentToLocalStorage = (paymentIntent: string | null) => {
-  localStorage.setItem(PAYMENT_INTENT_LOCAL_STORAGE_KEY, JSON.stringify(paymentIntent));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(PAYMENT_INTENT_LOCAL_STORAGE_KEY, JSON.stringify(paymentIntent));
+  }
 };
 
 export const CartContextProvider = ({ children }: Props) => {
@@ -57,11 +67,6 @@ export const CartContextProvider = ({ children }: Props) => {
     null
   );
   const [paymentIntent, setPaymentIntent] = useState<string | null>(null);
-
-  // Bu fonksiyonu useCallback ile sarmalayalım
-  const setCartItemsToLocalStorage = useCallback((cartItems: CartProductType[] | null) => {
-    localStorage.setItem(CART_ITEMS_LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
-}, []); 
 
   // Sepet öğelerini ve ödeme niyetini localStorage'dan yükle
   useEffect(() => {
@@ -99,27 +104,83 @@ export const CartContextProvider = ({ children }: Props) => {
     setCartTotalAmount(total);
   }, [cartProducts]);
 
-// LocalStorage güncellemesini useEffect içine al
-const handleAddProductToCart = useCallback((product: CartProductType) => {
-  setCartProducts((prev) => {
-    if (!prev) {
-      const updatedCart = [product];
-      toast.success("Product added to cart!"); // Önce toast mesajını göster
+  // Sepete ürün ekleme
+  const handleAddProductToCart = useCallback((product: CartProductType) => {
+    setCartProducts((prev) => {
+      let updatedCart: CartProductType[];
+
+      if (!prev) {
+        updatedCart = [product];
+      } else {
+        const existingProductIndex = prev.findIndex(
+          (item) => item.id === product.id
+        );
+
+        if (existingProductIndex !== -1) {
+          const updatedProduct = {
+            ...prev[existingProductIndex],
+            quantity: prev[existingProductIndex].quantity + product.quantity,
+          };
+
+          if (updatedProduct.quantity > product.stock) {
+            toast.error("Not enough stock available for this quantity.");
+            return prev;
+          }
+
+          updatedCart = [
+            ...prev.slice(0, existingProductIndex),
+            updatedProduct,
+            ...prev.slice(existingProductIndex + 1),
+          ];
+        } else {
+          if (product.quantity > product.stock) {
+            toast.error("Not enough stock available for this quantity.");
+            return prev;
+          }
+          updatedCart = [...prev, product];
+        }
+      }
+
+      setCartItemsToLocalStorage(updatedCart);
+      toast.success("Product added to cart!");
       return updatedCart;
-    }
+    });
+  }, []);
 
-    const existingProductIndex = prev.findIndex(
-      (item) => item.id === product.id
-    );
+  // Sepetten ürün silme
+  const handleRemoveProductFromCart = useCallback(
+    (product: CartProductType) => {
+      setCartProducts((prev) => {
+        if (!prev) return null;
 
-    if (existingProductIndex !== -1) {
+        const filteredProducts = prev.filter((item) => item.id !== product.id);
+
+        setCartItemsToLocalStorage(filteredProducts);
+        toast.success("Product removed from cart");
+        return filteredProducts;
+      });
+    },
+    []
+  );
+
+  // Sepetteki ürün miktarını artırma
+  const handleCartQtyIncrease = useCallback((product: CartProductType) => {
+    setCartProducts((prev) => {
+      if (!prev) return null;
+
+      const existingProductIndex = prev.findIndex(
+        (item) => item.id === product.id
+      );
+
+      if (existingProductIndex === -1) return prev;
+
       const updatedProduct = {
         ...prev[existingProductIndex],
-        quantity: prev[existingProductIndex].quantity + product.quantity,
+        quantity: prev[existingProductIndex].quantity + 1,
       };
 
       if (updatedProduct.quantity > product.stock) {
-        toast.error("Not enough stock available for this quantity.");
+        toast.error("Max stock quantity reached");
         return prev;
       }
 
@@ -129,114 +190,59 @@ const handleAddProductToCart = useCallback((product: CartProductType) => {
         ...prev.slice(existingProductIndex + 1),
       ];
 
-      toast.success("Product quantity updated in cart!"); // Önce toast mesajını göster
+      setCartItemsToLocalStorage(updatedCart);
+      toast.success("Product quantity updated");
       return updatedCart;
-    } else {
-      if (product.quantity > product.stock) {
-        toast.error("Not enough stock available for this quantity.");
-        return prev;
-      }
-      const updatedCart = [...prev, product];
+    });
+  }, []);
 
-      toast.success("Product added to cart!"); // Önce toast mesajını göster
-      return updatedCart;
-    }
-  });
-}, []);
-
-const handleRemoveProductFromCart = useCallback(
-  (product: CartProductType) => {
+  // Sepetteki ürün miktarını azaltma
+  const handleCartQtyDecrease = useCallback((product: CartProductType) => {
     setCartProducts((prev) => {
       if (!prev) return null;
 
-      const filteredProducts = prev.filter((item) => item.id !== product.id);
+      const existingProductIndex = prev.findIndex(
+        (item) => item.id === product.id
+      );
 
-      toast.success("Product removed from cart"); // Önce toast mesajını göster
-      return filteredProducts;
+      if (existingProductIndex === -1) return prev;
+
+      const updatedProduct = {
+        ...prev[existingProductIndex],
+        quantity: prev[existingProductIndex].quantity - 1,
+      };
+
+      if (updatedProduct.quantity < 1) {
+        toast.error("Min quantity reached");
+        return prev;
+      }
+
+      const updatedCart = [
+        ...prev.slice(0, existingProductIndex),
+        updatedProduct,
+        ...prev.slice(existingProductIndex + 1),
+      ];
+
+      setCartItemsToLocalStorage(updatedCart);
+      toast.success("Product quantity updated");
+      return updatedCart;
     });
-  },
-  []
-);
+  }, []);
 
-const handleCartQtyIncrease = useCallback((product: CartProductType) => {
-  setCartProducts((prev) => {
-    if (!prev) return null;
+  // Sepeti temizleme
+  const handleClearCart = useCallback(() => {
+    setCartProducts(null);
+    setCartTotalQty(0);
+    setCartTotalAmount(0);
+    setCartItemsToLocalStorage(null);
+    toast.success("Cart cleared");
+  }, []);
 
-    const existingProductIndex = prev.findIndex(
-      (item) => item.id === product.id
-    );
-
-    if (existingProductIndex === -1) return prev;
-
-    const updatedProduct = {
-      ...prev[existingProductIndex],
-      quantity: prev[existingProductIndex].quantity + 1,
-    };
-
-    if (updatedProduct.quantity > product.stock) {
-      toast.error("Max stock quantity reached");
-      return prev;
-    }
-
-    const updatedCart = [
-      ...prev.slice(0, existingProductIndex),
-      updatedProduct,
-      ...prev.slice(existingProductIndex + 1),
-    ];
-    toast.success("Product quantity updated"); // Önce toast mesajını göster
-    return updatedCart;
-  });
-}, []);
-
-const handleCartQtyDecrease = useCallback((product: CartProductType) => {
-  setCartProducts((prev) => {
-    if (!prev) return null;
-
-    const existingProductIndex = prev.findIndex(
-      (item) => item.id === product.id
-    );
-
-    if (existingProductIndex === -1) return prev;
-
-    const updatedProduct = {
-      ...prev[existingProductIndex],
-      quantity: prev[existingProductIndex].quantity - 1,
-    };
-
-    if (updatedProduct.quantity < 1) {
-      toast.error("Min quantity reached");
-      return prev;
-    }
-
-    const updatedCart = [
-      ...prev.slice(0, existingProductIndex),
-      updatedProduct,
-      ...prev.slice(existingProductIndex + 1),
-    ];
-
-    toast.success("Product quantity updated"); // Önce toast mesajını göster
-    return updatedCart;
-  });
-}, []);
-
-const handleClearCart = useCallback(() => {
-  setCartProducts(null);
-  setCartTotalQty(0);
-  setCartTotalAmount(0);
-  toast.success("Cart cleared"); // Önce toast mesajını göster
-}, []);
-
+  // Ödeme niyetini ayarlama
   const handleSetPaymentIntent = useCallback((val: string | null) => {
     setPaymentIntent(val);
     setPaymentIntentToLocalStorage(val);
   }, []);
-
-  // useEffect kullanarak localStorage güncellemesini yap
-  useEffect(() => {
-    if (cartProducts !== null) {
-      setCartItemsToLocalStorage(cartProducts);
-    }
-  }, [cartProducts, setCartItemsToLocalStorage]);
 
   const value = {
     cartTotalQty,
@@ -247,9 +253,8 @@ const handleClearCart = useCallback(() => {
     handleCartQtyIncrease,
     handleCartQtyDecrease,
     handleClearCart,
-    handleSetPaymentIntent,
     paymentIntent,
-    setCartItemsToLocalStorage
+    handleSetPaymentIntent,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -10,7 +10,7 @@ export interface IProductParams {
 
 export default async function getProducts(params: IProductParams) {
   try {
-    const { page = 1, pageSize = 80, category, searchTerm } = params; 
+    const { page = 1, pageSize = 50, category, searchTerm } = params; 
     const searchString = searchTerm || "";
 
     const query: any = {
@@ -36,7 +36,7 @@ export default async function getProducts(params: IProductParams) {
       ],
     };
 
-    if (category) {
+    if (category && category !== "All") {
       query.category = category;
     }
 
@@ -56,7 +56,7 @@ export default async function getProducts(params: IProductParams) {
         },
       },
       skip: skip,
-      take: pageSize,
+      take: parseInt(pageSize.toString()), // pageSize'ı string'e çevirip sonra tamsayıya dönüştürün,
       orderBy: {
         // createdAt: "desc", // Veya istediğiniz başka bir sıralama kriteri
       }
