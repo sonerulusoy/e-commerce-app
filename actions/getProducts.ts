@@ -1,3 +1,4 @@
+import { publicUserSelect } from "@/libs/publicUser";
 // ../actions/getProducts.ts
 import prisma from "@/libs/prismadb";
 
@@ -48,7 +49,7 @@ export default async function getProducts(params: IProductParams) {
       include: {
         reviews: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
           },
           orderBy: {
             createdDate: "desc",

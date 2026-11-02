@@ -1,6 +1,7 @@
 "use client";
 
-import { Order, User } from "@prisma/client";
+import { Order } from "@prisma/client";
+import type { PublicUser } from "@/libs/publicUser";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { formatPrice } from "@/utils/formatPrice";
 import Heading from "@/app/components/Heading";
@@ -23,7 +24,7 @@ interface OrdersClientProps {
 }
 
 type ExtendedOrder = Order & {
-  user: User;
+  user: PublicUser;
 };
 
 const OrdersClient: React.FC<OrdersClientProps> = ({ orders }) => {

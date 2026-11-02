@@ -1,3 +1,4 @@
+import { publicUserSelect } from "@/libs/publicUser";
 import { authOptions } from "@/pages/api/auth/[...nextauth]";
 import { getServerSession } from "next-auth";
 import prisma from "@/libs/prismadb";
@@ -16,7 +17,7 @@ export default async function getCurrentUser() {
 
     const currentUser = await prisma.user.findUnique({
       where: { email: session?.user?.email },
-      include: {orders:true},
+      select: { ...publicUserSelect, orders: true },
     });
 
     if (!currentUser) {

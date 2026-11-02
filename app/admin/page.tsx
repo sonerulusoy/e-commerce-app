@@ -2,6 +2,8 @@ import getGraphData from "@/actions/getGraphData";
 import getOrders from "@/actions/getOrders";
 import getProducts, { IProductParams } from "@/actions/getProducts";
 import getUsers from "@/actions/getUsers";
+import getCurrentUser from "@/actions/getCurrentUser";
+import NullData from "@/app/components/NullData";
 import Container from "../components/Container";
 import dynamic from 'next/dynamic';
 import { getTotalProductCount } from "@/utils/getTotalProductCount";
@@ -13,6 +15,12 @@ const Summary = dynamic(() => import("./Summary"), { ssr: false });
 const BarGraph = dynamic(() => import("./BarGraph"), { ssr: false });
 
 const Admin = async () => {
+  // Pages may execute in parallel with layouts; guard before loading admin data.
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.role !== "ADMIN") {
+    return <NullData title="Access denied" />;
+  }
+
   const initialProductData = await getProducts({ page: 1, pageSize: 200 });
   const products = initialProductData.products
   const orders = await getOrders();

@@ -1,3 +1,4 @@
+import { publicUserSelect } from "@/libs/publicUser";
 import prisma from "@/libs/prismadb";
 import { ObjectId } from "mongodb"; // ObjectId doğrulaması için ekledik
 
@@ -21,7 +22,7 @@ export default async function getProductById(params: IParams) {
       include: {
         reviews: {
           include: {
-            user: true,
+            user: { select: publicUserSelect },
           },
           orderBy: {
             createdDate: "desc",

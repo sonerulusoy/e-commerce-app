@@ -1,7 +1,8 @@
+import type { PublicUser } from "@/libs/publicUser";
 // types.ts (veya mevcut types dosyanız)
-import { Product, Review, User } from "@prisma/client"
+import { Product, Review } from "@prisma/client"
 
-export type SafeUser = Omit<User, "createdAt" | "updatedAt" | "emailVerified"> & {
+export type SafeUser = Omit<PublicUser, "createdAt" | "updatedAt" | "emailVerified"> & {
   createdAt: string;
   updatedAt: string;
   emailVerified: string | null;

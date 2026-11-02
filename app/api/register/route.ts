@@ -1,3 +1,4 @@
+import { publicUserSelect } from "@/libs/publicUser";
 import bcrypt from "bcrypt";
 import prisma from "@/libs/prismadb";
 import { NextResponse } from "next/server"; 
@@ -9,6 +10,7 @@ export async function POST(request: Request) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
+        select: publicUserSelect,
         data: {
             name,
             email,

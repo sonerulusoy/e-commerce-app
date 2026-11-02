@@ -1,6 +1,7 @@
 "use client";
 
-import { Order, User } from "@prisma/client";
+import { Order } from "@prisma/client";
+import type { PublicUser } from "@/libs/publicUser";
 import { useEffect, useState } from "react";
 import Heading from "../components/Heading";
 import { formatPrice } from "@/utils/formatPrice";
@@ -8,7 +9,7 @@ import { formatNumber } from "@/utils/formatNumber";
 
 interface SummaryProps {
   orders: Order[];
-  users: User[];
+  users: PublicUser[];
   productsCount: number;
 }
 
